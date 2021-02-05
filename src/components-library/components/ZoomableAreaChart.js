@@ -11,8 +11,11 @@ import {
   curveMonotoneX,
   arc,
   utcHour,
+  bisector,
+  pointer,
 } from "d3"
 import styled from "@emotion/styled"
+import moment from "moment"
 import { gatherByKeys } from "../utils/convertChartData"
 
 const initState = {
@@ -58,7 +61,7 @@ const ZoomableAreaChart = ({ data = [] }) => {
         focusViewMargin.top,
       ])
 
-    const focusXAxis = axisBottom(focusViewX)
+    const focusXAxis = axisBottom(focusViewX).tickSizeOuter(0)
 
     const focusArea = area()
       .curve(curveMonotoneX)
@@ -85,7 +88,7 @@ const ZoomableAreaChart = ({ data = [] }) => {
 
     // 확대된 차트
     const focusViewChart = () => {
-      const yAxis = axisLeft(focusViewY)
+      const yAxis = axisLeft(focusViewY).tickSizeOuter(0)
 
       svgLine
         .append("defs")
@@ -130,15 +133,16 @@ const ZoomableAreaChart = ({ data = [] }) => {
         .attr("class", "y-axis")
         .style("color", "#fff")
         .call(yAxis)
+        .call((g) => g.select(".domain").remove())
 
-      return focus.node()
+      return focus
     }
 
     // 컨트롤하는 차트
     const contextViewChart = () => {
-      const contextXAxis = axisBottom(contextViewX)
+      const contextXAxis = axisBottom(contextViewX).tickSizeOuter(0)
 
-      const yAxis = axisLeft(contextViewY)
+      const yAxis = axisLeft(contextViewY).tickSizeOuter(0)
 
       const context = svgLine
         .append("g")
@@ -172,10 +176,11 @@ const ZoomableAreaChart = ({ data = [] }) => {
         .attr("class", "y-axis")
         .style("color", "#fff")
         .call(yAxis)
+        .call((g) => g.select(".domain").remove())
 
       context.append("g").attr("class", "x-brush")
 
-      return context.node()
+      return context
     }
 
     // 브러쉬 설정
@@ -191,35 +196,6 @@ const ZoomableAreaChart = ({ data = [] }) => {
         .startAngle(0)
         .endAngle((d, i) => (i ? Math.PI : -Math.PI))
 
-      const brushHandle = (g, selection) =>
-        g
-          .selectAll(".handle-custom")
-          .data([{ type: "w" }, { type: "e" }])
-          .join((enter) =>
-            enter
-              .append("path")
-              .attr("class", "handle-custom")
-              .attr("fill", "#666")
-              .attr("fill-opacity", 0.8)
-              .attr("stroke", "#000")
-              .attr("stroke-width", 1.5)
-              .attr("cursor", "ew-resize")
-              .attr("d", handleShape)
-          )
-          .attr("display", selection === null ? "none" : null)
-          .attr(
-            "transform",
-            selection === null
-              ? null
-              : (d, i) =>
-                  `translate(${selection[i]},${
-                    (contextViewChartHeight +
-                      contextViewMargin.top -
-                      contextViewMargin.bottom) /
-                    2
-                  })`
-          )
-
       const brushEvent = ({ selection }) => {
         let extent = selection.map((d) => {
           return contextViewX.invert(d) // invert는 축의 좌표위치 기준 매핑된 실제 데이터값을 반환
@@ -230,16 +206,14 @@ const ZoomableAreaChart = ({ data = [] }) => {
       }
 
       const brushended = ({ selection }) => {
-        console.log(
-          "end",
-          contextViewX(utcHour.offset(contextViewX.domain()[1], -1)) // 인자로 들어간 값을 기준 x축 좌표값
-        )
-        console.log("end", contextViewX.domain()[1]) // x축 실제값의 최대값
-        console.log("end", utcHour.offset(contextViewX.domain()[1], -1)) // x축 실제값의 최대값 기준 1시간 전 값
+        // console.log(
+        //   "end",
+        //   contextViewX(utcHour.offset(contextViewX.domain()[1], -1)) // 인자로 들어간 값을 기준 x축 좌표값
+        // )
+        // console.log("end", contextViewX.domain()[1]) // x축 실제값의 최대값
+        // console.log("end", utcHour.offset(contextViewX.domain()[1], -1)) // x축 실제값의 최대값 기준 1시간 전 값
         if (!selection) {
           svgLine.select("g.x-brush").call(brush.move, defaultSelection)
-        } else {
-          svgLine.select("g.x-brush").call(brushHandle, selection)
         }
       }
 
@@ -264,9 +238,81 @@ const ZoomableAreaChart = ({ data = [] }) => {
       return brush
     }
 
+    const setTooltip = (targetChart, x, y) => {
+      const tooltip = targetChart.append("g")
+
+      targetChart.on("touchmove mousemove", (e) => {
+        const { timestamp, value } = bisect(pointer(e, targetChart.node())[0])
+        tooltip
+          .attr("transform", `translate(${x(timestamp)},${y(value)})`)
+          .call(callout, `${value} ${formatDate(moment(timestamp))}`)
+      })
+
+      targetChart.on("touchend mouseleave", () => {
+        tooltip.call(callout, null)
+      })
+
+      const formatDate = (date) => {
+        return date.toLocaleString("en", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          timeZone: "UTC",
+        })
+      }
+
+      const bisect = (mx) => {
+        const bisect = bisector((d) => d.timestamp).left
+        const date = x.invert(mx)
+        const index = bisect(data, date, 1)
+        const a = data[index - 1]
+        const b = data[index]
+        return b && date - a.date > b.date - date ? b : a
+      }
+
+      const callout = (g, value) => {
+        if (!value) return g.style("display", "none")
+        g.style("display", null)
+          .style("pointer-events", "none")
+          .style("font", "10px sans-serif")
+
+        const path = g
+          .selectAll("path")
+          .data([null])
+          .join("path")
+          .attr("fill", "white")
+          .attr("stroke", "black")
+
+        const text = g
+          .selectAll("text")
+          .data([null])
+          .join("text")
+          .call((text) =>
+            text
+              .selectAll("tspan")
+              .data((value + "").split(/\n/))
+              .join("tspan")
+              .attr("x", 0)
+              .attr("y", (d, i) => `${i * 1.1}em`)
+              .style("font-weight", (_, i) => (i ? null : "bold"))
+              .text((d) => d)
+          )
+
+        const { x, y, width: w, height: h } = text.node().getBBox()
+
+        text.attr("transform", `translate(${-w / 2},${15 - y})`)
+        path.attr(
+          "d",
+          `M${-w / 2 - 10},5H-5l5,-5l5,5H${w / 2 + 10}v${h + 20}h-${w + 20}z`
+        )
+      }
+    }
+
     const contextViewChartNode = contextViewChart()
     const focusViewChartNode = focusViewChart()
     const brushNode = setBrush()
+    setTooltip(contextViewChartNode, contextViewX, contextViewY)
+    setTooltip(focusViewChartNode, focusViewX, focusViewY)
 
     return {
       contextViewChartNode,
