@@ -185,17 +185,6 @@ const ZoomableAreaChart = ({ data = [] }) => {
 
     // 브러쉬 설정
     const setBrush = () => {
-      const handleShape = arc()
-        .innerRadius(0)
-        .outerRadius(
-          (contextViewChartHeight -
-            contextViewMargin.top -
-            contextViewMargin.bottom) /
-            2
-        )
-        .startAngle(0)
-        .endAngle((d, i) => (i ? Math.PI : -Math.PI))
-
       const brushEvent = ({ selection }) => {
         let extent = selection.map((d) => {
           return contextViewX.invert(d) // invert는 축의 좌표위치 기준 매핑된 실제 데이터값을 반환
