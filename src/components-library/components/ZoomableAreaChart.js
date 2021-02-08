@@ -227,14 +227,18 @@ const ZoomableAreaChart = ({ data = [] }) => {
       return brush
     }
 
-    const setTooltip = (targetChart, x, y) => {
+    const setTooltip = (targetChart, x, y, height, margin) => {
       const tooltip = targetChart.append("g")
+      const pivot = targetChart.append("rect")
 
       targetChart.on("touchmove mousemove", (e) => {
         const { timestamp, value } = bisect(pointer(e, targetChart.node())[0])
         tooltip
           .attr("transform", `translate(${x(timestamp)},${y(value)})`)
           .call(callout, `${value} ${formatDate(moment(timestamp))}`)
+        pivot
+          .attr("transform", `translate(${x(timestamp)}, 0)`)
+          .call(pivotOut, value)
       })
 
       targetChart.on("touchend mouseleave", () => {
@@ -251,12 +255,20 @@ const ZoomableAreaChart = ({ data = [] }) => {
       }
 
       const bisect = (mx) => {
-        const bisect = bisector((d) => d.timestamp).left
+        const bisect = bisector((d) => d.timestamp).left // 비교 데이터 리스트와 대상 데이터를 맵핑시켜 대응되는 값의 인덱스를 반환하는 함수를 반환
         const date = x.invert(mx)
         const index = bisect(data, date, 1)
         const a = data[index - 1]
         const b = data[index]
         return b && date - a.date > b.date - date ? b : a
+      }
+
+      const pivotOut = (g, value) => {
+        if (!value) return g.style("display", "none")
+        g.style("display", null)
+          .style("fill", "white")
+          .style("width", 1)
+          .style("height", height - margin.bottom)
       }
 
       const callout = (g, value) => {
@@ -300,8 +312,20 @@ const ZoomableAreaChart = ({ data = [] }) => {
     const contextViewChartNode = contextViewChart()
     const focusViewChartNode = focusViewChart()
     const brushNode = setBrush()
-    setTooltip(contextViewChartNode, contextViewX, contextViewY)
-    setTooltip(focusViewChartNode, focusViewX, focusViewY)
+    setTooltip(
+      contextViewChartNode,
+      contextViewX,
+      contextViewY,
+      contextViewChartHeight,
+      contextViewMargin
+    )
+    setTooltip(
+      focusViewChartNode,
+      focusViewX,
+      focusViewY,
+      focusViewChartHeight,
+      focusViewMargin
+    )
 
     return {
       contextViewChartNode,

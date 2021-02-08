@@ -15,6 +15,7 @@ import {
 import styled from "@emotion/styled"
 import { gatherByKeys } from "../utils/convertChartData"
 import { times } from "ramda"
+import { Vega } from "react-vega"
 
 const initState = {
   focusViewChartNode: null,
@@ -22,228 +23,113 @@ const initState = {
 }
 
 const ZoomableAreaChartTooltip = ({ data = [] }) => {
-  const svgRef = React.useRef()
-  const [chartNode, setChartNode] = React.useState(initState)
+  const spec = {
+    $schema: "https://vega.github.io/schema/vega/v5.json",
+    width: 400,
+    height: 200,
+    padding: { left: 5, right: 5, top: 5, bottom: 5 },
 
-  const focusViewMargin = {
-    top: 20,
-    right: 30,
-    bottom: 30,
-    left: 50,
+    data: [
+      {
+        name: "table",
+        values: [
+          { category: "A", amount: 28 },
+          { category: "B", amount: 55 },
+          { category: "C", amount: 43 },
+          { category: "D", amount: 91 },
+          { category: "E", amount: 81 },
+          { category: "F", amount: 53 },
+          { category: "G", amount: 19 },
+          { category: "H", amount: 87 },
+        ],
+      },
+    ],
+
+    signals: [
+      {
+        name: "tooltip",
+        value: {},
+        on: [
+          { events: "rect:mouseover", update: "datum" },
+          { events: "rect:mouseout", update: "{}" },
+        ],
+      },
+    ],
+
+    scales: [
+      {
+        name: "xscale",
+        type: "band",
+        domain: { data: "table", field: "category" },
+        range: "width",
+      },
+      {
+        name: "yscale",
+        domain: { data: "table", field: "amount" },
+        nice: true,
+        range: "height",
+      },
+    ],
+
+    axes: [
+      { orient: "bottom", scale: "xscale" },
+      { orient: "left", scale: "yscale" },
+    ],
+
+    marks: [
+      {
+        type: "rect",
+        from: { data: "table" },
+        encode: {
+          enter: {
+            x: { scale: "xscale", field: "category", offset: 1 },
+            width: { scale: "xscale", band: 1, offset: -1 },
+            y: { scale: "yscale", field: "amount" },
+            y2: { scale: "yscale", value: 0 },
+          },
+          update: {
+            fill: { value: "steelblue" },
+          },
+          hover: {
+            fill: { value: "red" },
+          },
+        },
+      },
+      {
+        type: "text",
+        encode: {
+          enter: {
+            align: { value: "center" },
+            baseline: { value: "bottom" },
+            fill: { value: "#333" },
+          },
+          update: {
+            x: { scale: "xscale", signal: "tooltip.category", band: 0.5 },
+            y: { scale: "yscale", signal: "tooltip.amount", offset: -2 },
+            text: { signal: "tooltip.amount" },
+            fillOpacity: [
+              { test: "datum === tooltip", value: 0 },
+              { value: 1 },
+            ],
+          },
+        },
+      },
+    ],
   }
 
-  const contextViewMargin = {
-    top: 20,
-    right: 30,
-    bottom: 30,
-    left: 50,
+  function handleHover(...args) {
+    console.log(args)
   }
 
-  const width = 1200
-  const height = 650
-  const focusViewChartHeight = 400
-  const contextViewChartHeight = 150
+  const signalListeners = { hover: handleHover }
 
-  const makeChart = (data) => {
-    const svgLine = select(svgRef.current)
-    const _data = gatherByKeys(data)
-
-    const focusViewX = scaleUtc()
-      .domain(extent(_data.timestamp, (d) => d))
-      .range([0, width - focusViewMargin.right - focusViewMargin.left])
-
-    const focusViewY = scaleLinear()
-      .domain(extent(_data.value, (d) => d))
-      .range([
-        focusViewChartHeight - focusViewMargin.bottom,
-        focusViewMargin.top,
-      ])
-
-    const focusXAxis = axisBottom(focusViewX)
-
-    const focusArea = area()
-      .curve(curveMonotoneX)
-      .x((d) => focusViewX(d.timestamp))
-      .y0(focusViewChartHeight)
-      .y1((d) => focusViewY(d.value))
-
-    const contextViewX = scaleUtc()
-      .domain(focusViewX.domain())
-      .range([0, width - contextViewMargin.right - contextViewMargin.left])
-
-    const contextViewY = scaleLinear()
-      .domain(focusViewY.domain())
-      .range([
-        contextViewChartHeight - contextViewMargin.bottom,
-        contextViewMargin.top,
-      ])
-
-    const contextArea = area()
-      .curve(curveMonotoneX)
-      .x((d) => contextViewX(d.timestamp))
-      .y0(contextViewChartHeight - contextViewMargin.bottom)
-      .y1((d) => contextViewY(d.value))
-
-    const setTooltip = (targetChart, x, y) => {
-      const callout = (g, value) => {
-        if (!value) return g.style("display", "none")
-        g.style("display", null)
-          .stylle("pointer-events", "none")
-          .style("font", "10px sans-serif")
-      }
-
-      const tooltip = targetChart.append("g")
-      targetChart.on("touchmove mousemove", (e) => {
-        const { timestamp, value } = bisect(pointer(e, targetChart)[0])
-        tooltip
-          .attr("transform", `translate(${x(timestamp)},${y(value)})`)
-          .call(callout, ``)
-      })
-      targetChart.on("touchend mouseleave", () => tooltip.call(callout, null))
-    }
-
-    const bisect = () => {}
-
-    // 확대된 차트
-    const focusViewChart = () => {
-      const yAxis = axisLeft(focusViewY)
-
-      svgLine
-        .append("defs")
-        .append("clipPath")
-        .attr("id", "clip")
-        .append("rect")
-        .attr("width", width - focusViewMargin.left - focusViewMargin.right)
-        .attr("height", focusViewChartHeight)
-
-      const focus = svgLine
-        .append("g")
-        .attr("class", "focus")
-        .attr(
-          "transform",
-          `translate(${focusViewMargin.left}, ${
-            contextViewChartHeight +
-            contextViewMargin.top +
-            contextViewMargin.bottom +
-            focusViewMargin.top
-          })`
-        )
-
-      focus
-        .append("path")
-        .datum(data)
-        .attr("class", "focus-area")
-        .attr("clip-path", "url(#clip)")
-        .style("fill", "none")
-        .style("stroke", "#fcba03")
-        .style("stroke-width", 1.5)
-        .attr("d", focusArea)
-
-      focus
-        .append("g")
-        .attr("class", "focus-x-axis")
-        .attr("transform", `translate(0, ${focusViewChartHeight})`)
-        .call(focusXAxis)
-
-      focus
-        .append("g")
-        .attr("class", "y-axis")
-        .call(yAxis)
-        .select(".domain")
-        .remove()
-
-      setTooltip(focus, focusViewX, focusViewY)
-
-      return focus.node()
-    }
-
-    // 컨트롤하는 차트
-    const contextViewChart = () => {
-      const contextXAxis = axisBottom(contextViewX)
-
-      const yAxis = axisLeft(contextViewY)
-
-      const context = svgLine
-        .append("g")
-        .attr("class", "context")
-        .attr(
-          "transform",
-          `translate(${contextViewMargin.left}, ${contextViewMargin.top})`
-        )
-
-      context
-        .append("path")
-        .datum(data)
-        .attr("class", "context-area")
-        .style("fill", "none")
-        .style("stroke", "#2d2fb3")
-        .style("stroke-width", 1.5)
-        .attr("d", contextArea)
-
-      context
-        .append("g")
-        .attr("class", "context-x-axis")
-        .attr(
-          "transform",
-          `translate(0, ${contextViewChartHeight - contextViewMargin.bottom})`
-        )
-        .call(contextXAxis, contextViewX, contextViewY)
-
-      context
-        .append("g")
-        .attr("class", "y-axis")
-        .call(yAxis)
-        .select(".domain")
-        .remove()
-
-      context.append("g").attr("class", "x-brush")
-
-      setTooltip(context)
-
-      return context.node()
-    }
-
-    // 브러쉬 설정
-    const setBrush = () => {
-      const brushEvent = ({ selection }) => {
-        let extent = selection.map((d) => {
-          return contextViewX.invert(d)
-        })
-        focusViewX.domain(extent) // 브러쉬를 통한 데이터 업데이트
-        svgLine.select(".focus-area").attr("d", focusArea)
-        svgLine.select(".focus-x-axis").call(focusXAxis)
-      }
-
-      const brush = brushX(contextViewX)
-        .extent([
-          [0, 0],
-          [
-            width - contextViewMargin.right - contextViewMargin.left,
-            contextViewChartHeight - contextViewMargin.bottom,
-          ],
-        ])
-        .on("brush", brushEvent)
-
-      svgLine.select("g.x-brush").call(brush)
-
-      return brush
-    }
-
-    const contextViewChartNode = contextViewChart()
-    const focusViewChartNode = focusViewChart()
-    const brushNode = setBrush()
-
-    return {
-      contextViewChartNode,
-      focusViewChartNode,
-    }
-  }
-
-  React.useEffect(() => {
-    setChartNode({ ...chartNode, ...makeChart(data) })
-  }, [data])
-
-  return <svg width={width} height={height} ref={svgRef}></svg>
+  return (
+    <Vega
+      spect={spec}
+      data={{ table: data }}
+      signalListeners={signalListeners}
+    />
+  )
 }
 
 export default ZoomableAreaChartTooltip
