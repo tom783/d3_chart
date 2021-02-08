@@ -66,7 +66,7 @@ const ZoomableAreaChart = ({ data = [] }) => {
     const focusArea = area()
       .curve(curveMonotoneX)
       .x((d) => focusViewX(d.timestamp))
-      .y0(focusViewChartHeight)
+      .y0(focusViewChartHeight - focusViewMargin.bottom)
       .y1((d) => focusViewY(d.value))
 
     const contextViewX = scaleUtc()
@@ -96,7 +96,7 @@ const ZoomableAreaChart = ({ data = [] }) => {
         .attr("id", "clip")
         .append("rect")
         .attr("width", width - focusViewMargin.left - focusViewMargin.right)
-        .attr("height", focusViewChartHeight)
+        .attr("height", focusViewChartHeight - focusViewMargin.bottom)
 
       const focus = svgLine
         .append("g")
@@ -125,7 +125,10 @@ const ZoomableAreaChart = ({ data = [] }) => {
         .append("g")
         .attr("class", "focus-x-axis")
         .style("color", "#fff")
-        .attr("transform", `translate(0, ${focusViewChartHeight})`)
+        .attr(
+          "transform",
+          `translate(0, ${focusViewChartHeight - focusViewMargin.bottom})`
+        )
         .call(focusXAxis)
 
       focus
