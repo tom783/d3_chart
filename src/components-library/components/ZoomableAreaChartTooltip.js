@@ -9,127 +9,248 @@ import {
   axisBottom,
   axisLeft,
   curveMonotoneX,
+  utcHour,
   bisector,
   pointer,
 } from "d3"
 import styled from "@emotion/styled"
 import { gatherByKeys } from "../utils/convertChartData"
-import { times } from "ramda"
-import { Vega } from "react-vega"
-
 const initState = {
   focusViewChartNode: null,
   contextViewChartNode: null,
 }
 
-const ZoomableAreaChartTooltip = ({ data = [] }) => {
-  const spec = {
-    $schema: "https://vega.github.io/schema/vega/v5.json",
-    width: 400,
-    height: 200,
-    padding: { left: 5, right: 5, top: 5, bottom: 5 },
+const ZoomableAreaChartTooltip = ({
+  data = [],
+  width = 1200,
+  lineColor = "#abd5ff",
+  color = "#fff",
+  focusArea = {
+    height: 400,
+    marginTop: 20,
+    marginRight: 30,
+    marginBottom: 30,
+    marginLeft: 50,
+  },
+  contextArea = {
+    height: 150,
+    marginTop: 20,
+    marginRight: 30,
+    marginBottom: 30,
+    marginLeft: 50,
+  },
+}) => {
+  const svgRef = React.useRef()
+  const totalHeight =
+    focusArea.height +
+    focusArea.marginTop +
+    focusArea.marginBottom +
+    contextArea.height +
+    contextArea.marginTop +
+    contextArea.marginBottom
 
-    data: [
-      {
-        name: "table",
-        values: [
-          { category: "A", amount: 28 },
-          { category: "B", amount: 55 },
-          { category: "C", amount: 43 },
-          { category: "D", amount: 91 },
-          { category: "E", amount: 81 },
-          { category: "F", amount: 53 },
-          { category: "G", amount: 19 },
-          { category: "H", amount: 87 },
+  const makeChart = (data) => {
+    const svgInstance = select(svgRef.current)
+    const _data = gatherByKeys(data)
+
+    const chartSet = () => {
+      const focusX = scaleUtc()
+        .domain(extent(_data.timestamp, (d) => d))
+        .range([0, width - focusArea.marginRight - focusArea.marginLeft])
+
+      const focusY = scaleLinear()
+        .domain(extent(_data.value, (d) => d))
+        .range([focusArea.height - focusArea.marginBottom, focusArea.marginTop])
+
+      const focusXAxis = axisBottom(focusX).tickSizeOuter(0)
+      const focusYAxis = axisLeft(focusY).tickSizeOuter(0)
+
+      const focusDataArea = area()
+        .curve(curveMonotoneX)
+        .x((d) => focusX(d.timestamp))
+        .y0(focusArea.height - focusArea.marginBottom)
+        .y1((d) => focusY(d.value))
+
+      const contextX = scaleUtc()
+        .domain(focusX.domain())
+        .range([0, width - contextArea.marginRight - contextArea.marginLeft])
+
+      const contextY = scaleLinear()
+        .domain(focusY.domain())
+        .range([
+          contextArea.height - contextArea.marginBottom,
+          contextArea.marginTop,
+        ])
+
+      const contextXAxis = axisBottom(contextX).tickSizeOuter(0)
+      const contextYAxis = axisLeft(contextY).tickSizeOuter(0)
+
+      const contextDataArea = area()
+        .curve(curveMonotoneX)
+        .x((d) => contextX(d.timestamp))
+        .y0(contextArea.height - contextArea.marginBottom)
+        .y1((d) => contextY(d.value))
+
+      const brush = brushX(contextX).extent([
+        [0, 0],
+        [
+          width - contextArea.marginRight - contextArea.marginLeft,
+          contextArea.height - contextArea.marginBottom,
         ],
-      },
-    ],
+      ])
 
-    signals: [
-      {
-        name: "tooltip",
-        value: {},
-        on: [
-          { events: "rect:mouseover", update: "datum" },
-          { events: "rect:mouseout", update: "{}" },
-        ],
-      },
-    ],
+      return {
+        focusX,
+        focusY,
+        focusXAxis,
+        focusYAxis,
+        focusDataArea,
+        contextX,
+        contextY,
+        contextXAxis,
+        contextYAxis,
+        contextDataArea,
+        brush,
+      }
+    }
 
-    scales: [
-      {
-        name: "xscale",
-        type: "band",
-        domain: { data: "table", field: "category" },
-        range: "width",
-      },
-      {
-        name: "yscale",
-        domain: { data: "table", field: "amount" },
-        nice: true,
-        range: "height",
-      },
-    ],
+    const {
+      focusX,
+      focusY,
+      focusXAxis,
+      focusYAxis,
+      focusDataArea,
+      contextX,
+      contextY,
+      contextXAxis,
+      contextYAxis,
+      contextDataArea,
+      brush,
+    } = chartSet()
 
-    axes: [
-      { orient: "bottom", scale: "xscale" },
-      { orient: "left", scale: "yscale" },
-    ],
+    const createChart = () => {
+      svgInstance
+        .append("defs")
+        .append("clipPath")
+        .attr("id", "clip")
+        .append("rect")
+        .style("width", width - focusArea.marginLeft - focusArea.marginRight)
+        .style("height", focusArea.height - focusArea.marginBottom)
 
-    marks: [
-      {
-        type: "rect",
-        from: { data: "table" },
-        encode: {
-          enter: {
-            x: { scale: "xscale", field: "category", offset: 1 },
-            width: { scale: "xscale", band: 1, offset: -1 },
-            y: { scale: "yscale", field: "amount" },
-            y2: { scale: "yscale", value: 0 },
-          },
-          update: {
-            fill: { value: "steelblue" },
-          },
-          hover: {
-            fill: { value: "red" },
-          },
-        },
-      },
-      {
-        type: "text",
-        encode: {
-          enter: {
-            align: { value: "center" },
-            baseline: { value: "bottom" },
-            fill: { value: "#333" },
-          },
-          update: {
-            x: { scale: "xscale", signal: "tooltip.category", band: 0.5 },
-            y: { scale: "yscale", signal: "tooltip.amount", offset: -2 },
-            text: { signal: "tooltip.amount" },
-            fillOpacity: [
-              { test: "datum === tooltip", value: 0 },
-              { value: 1 },
-            ],
-          },
-        },
-      },
-    ],
+      const focusChart = svgInstance
+        .append("g")
+        .attr("class", "focus")
+        .attr(
+          "transform",
+          `translate(${focusArea.marginLeft}, ${
+            contextArea.marginTop +
+            contextArea.height +
+            contextArea.marginBottom +
+            focusArea.marginTop
+          })`
+        )
+
+      focusChart
+        .append("path")
+        .datum(data)
+        .attr("class", "focus-area")
+        .attr("clip-path", "url(#clip)")
+        .attr("fill", "none")
+        .attr("stroke", lineColor)
+        .attr("stroke-width", 1.5)
+        .attr("d", focusDataArea)
+
+      focusChart
+        .append("g")
+        .attr("class", "focus-x-axis")
+        .style("color", color)
+        .attr(
+          "transform",
+          `translate(0, ${focusArea.height - focusArea.marginBottom})`
+        )
+        .call(focusXAxis)
+
+      focusChart
+        .append("g")
+        .attr("class", "y-axis")
+        .style("color", color)
+        .call(focusYAxis)
+        .call((g) => g.select(".domain").remove()) // y축 라인 제거
+
+      const contextChart = svgInstance
+        .append("g")
+        .attr("class", "context")
+        .attr(
+          "transform",
+          `translate(${contextArea.marginLeft}, ${contextArea.marginTop})`
+        )
+
+      contextChart
+        .append("path")
+        .datum(data)
+        .attr("class", "context-area")
+        .attr("fill", "none")
+        .attr("stroke", lineColor)
+        .attr("stroke-width", 1.5)
+        .attr("d", contextDataArea)
+
+      contextChart
+        .append("g")
+        .attr("class", "context-x-axis")
+        .style("color", color)
+        .attr(
+          "transform",
+          `translate(0, ${contextArea.height - contextArea.marginBottom})`
+        )
+        .call(contextXAxis)
+
+      contextChart
+        .append("g")
+        .attr("class", "y-axis")
+        .style("color", "#fff")
+        .call(contextYAxis)
+        .call((g) => g.select(".domain").remove())
+
+      contextChart.append("g").attr("class", "x-brush")
+    }
+
+    const setEvent = () => {
+      const brushEvent = ({ selection }) => {
+        let extent = selection.map((d) => {
+          return contextX.invert(d)
+        })
+        focusX.domain(extent)
+        svgInstance.select(".focus-area").attr("d", focusDataArea)
+        svgInstance.select(".focus-x-axis").call(focusXAxis)
+      }
+
+      const defaultSelection = [
+        contextX(utcHour.offset(contextX.domain()[1], -1)),
+        contextX.range()[1],
+      ]
+
+      const brushended = ({ selection }) => {
+        if (!selection) {
+          svgInstance.select("g.x-brush").call(brush.move, defaultSelection)
+        }
+      }
+
+      brush.on("brush", brushEvent).on("end", brushended)
+      svgInstance
+        .select("g.x-brush")
+        .call(brush)
+        .call(brush.move, defaultSelection)
+    }
+
+    createChart()
+    setEvent()
   }
 
-  function handleHover(...args) {
-    console.log(args)
-  }
+  React.useEffect(() => {
+    makeChart(data)
+  }, [data])
 
-  const signalListeners = { hover: handleHover }
-
-  return (
-    <Vega
-      spect={spec}
-      data={{ table: data }}
-      signalListeners={signalListeners}
-    />
-  )
+  return <svg width={width} height={totalHeight} ref={svgRef}></svg>
 }
 
 export default ZoomableAreaChartTooltip

@@ -138,6 +138,8 @@ const ZoomableAreaChart = ({ data = [] }) => {
         .call(yAxis)
         .call((g) => g.select(".domain").remove())
 
+      focus.append("rect").attr("class", "pivot")
+
       return focus
     }
 
@@ -182,6 +184,8 @@ const ZoomableAreaChart = ({ data = [] }) => {
         .call((g) => g.select(".domain").remove())
 
       context.append("g").attr("class", "x-brush")
+
+      context.append("rect").attr("class", "pivot")
 
       return context
     }
@@ -230,18 +234,32 @@ const ZoomableAreaChart = ({ data = [] }) => {
       return brush
     }
 
-    const setTooltip = (targetChart, x, y, height, margin) => {
+    const setTooltip = (
+      targetChart,
+      x,
+      y,
+      height,
+      margin,
+      syncChart,
+      syncX,
+      syncHeight
+    ) => {
       const tooltip = targetChart.append("g")
-      const pivot = targetChart.append("rect")
 
       targetChart.on("touchmove mousemove", (e) => {
         const { timestamp, value } = bisect(pointer(e, targetChart.node())[0])
         tooltip
           .attr("transform", `translate(${x(timestamp)},${y(value)})`)
           .call(callout, `${value} ${formatDate(moment(timestamp))}`)
-        pivot
+        targetChart
+          .select("rect.pivot")
           .attr("transform", `translate(${x(timestamp)}, 0)`)
-          .call(pivotOut, value)
+          .call(pivotOut, value, height, margin)
+
+        syncChart
+          .select("rect.pivot")
+          .attr("transform", `translate(${syncX(timestamp)}, 0)`)
+          .call(pivotOut, value, syncHeight, margin)
       })
 
       targetChart.on("touchend mouseleave", () => {
@@ -266,7 +284,7 @@ const ZoomableAreaChart = ({ data = [] }) => {
         return b && date - a.date > b.date - date ? b : a
       }
 
-      const pivotOut = (g, value) => {
+      const pivotOut = (g, value, height, margin) => {
         if (!value) return g.style("display", "none")
         g.style("display", null)
           .style("fill", "white")
@@ -320,14 +338,22 @@ const ZoomableAreaChart = ({ data = [] }) => {
       contextViewX,
       contextViewY,
       contextViewChartHeight,
-      contextViewMargin
+      contextViewMargin,
+      focusViewChartNode,
+      focusViewX,
+      focusViewY,
+      focusViewChartHeight
     )
     setTooltip(
       focusViewChartNode,
       focusViewX,
       focusViewY,
       focusViewChartHeight,
-      focusViewMargin
+      focusViewMargin,
+      contextViewChartNode,
+      contextViewX,
+      contextViewY,
+      contextViewChartHeight
     )
 
     return {

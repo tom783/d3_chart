@@ -3,6 +3,7 @@ import {
   Brush,
   ZoomableLineChart,
   ZoomableAreaChart,
+  ZoomableAreaChartTooltip,
 } from "./components-library/components"
 import { data } from "./components-library/tempData/lineChartData"
 
@@ -19,7 +20,7 @@ function App() {
     <ViewPort>
       {/* <ZoomableLineChart data={data} />
       <Brush data={data} /> */}
-      <ZoomableAreaChart data={data} />
+      <ZoomableAreaChartTooltip data={data} />
     </ViewPort>
   )
 }
