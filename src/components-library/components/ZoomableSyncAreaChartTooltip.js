@@ -377,6 +377,9 @@ const ZoomableSyncAreaChartTooltip = ({
       //tooltip event
       const focusTooltip = svgInstance.select(".focus-tooltip")
       const contextTooltip = svgInstance.select(".context-tooltip")
+      svgInstance
+        .select("g.focusX-brush .overlay")
+        .attr("pointer-events", "none")
 
       setTooltip(
         contextChart,
