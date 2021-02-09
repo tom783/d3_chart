@@ -24,6 +24,7 @@ const initState = {
 const ZoomableSyncAreaChartTooltip = ({
   data = [],
   width = 1200,
+  useBrushHandle = true,
   lineColor = "#abd5ff",
   color = "#fff",
   focusArea = {
@@ -366,6 +367,10 @@ const ZoomableSyncAreaChartTooltip = ({
         .select("g.x-brush")
         .call(brush)
         .call(brush.move, defaultSelection)
+      !useBrushHandle &&
+        svgInstance.selectAll("g.x-brush .handle").attr("display", "none") //brush handler 크기 조절 off
+      !useBrushHandle &&
+        svgInstance.select("g.x-brush .overlay").attr("pointer-events", "none") //brush handler 드래그 사이즈 조절 off
 
       svgInstance.select("g.focusX-brush").call(focusBrush)
 
