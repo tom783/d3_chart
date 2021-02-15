@@ -15,7 +15,7 @@ import {
 } from "d3"
 import moment from "moment"
 import styled from "@emotion/styled"
-import { gatherByKeys } from "../utils/convertChartData"
+import { gatherByKeys } from "../../utils/convertChartData"
 const initState = {
   focusViewChartNode: null,
   contextViewChartNode: null,
@@ -414,7 +414,7 @@ const ZoomableSyncAreaChartTooltip = ({
 
   React.useEffect(() => {
     makeChart(data)
-  }, [data])
+  }, [data, useBrushHandle, lineColor, color])
 
   return <svg width={width} height={totalHeight} ref={svgRef}></svg>
 }
