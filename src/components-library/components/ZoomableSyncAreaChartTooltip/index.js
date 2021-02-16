@@ -361,7 +361,6 @@ const ZoomableSyncAreaChartTooltip = ({
           svgInstance.select("g.x-brush").call(brush.move, defaultSelection)
         }
       }
-
       brush.on("brush", brushEvent).on("end", brushended)
       svgInstance
         .select("g.x-brush")
