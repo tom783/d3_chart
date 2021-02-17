@@ -1,7 +1,7 @@
 import faker from "faker"
 import moment from "moment"
 
-function makeData(dataLength = 10, range = 5) {
+export function makeData(dataLength = 10, range = 5) {
   let data = []
 
   for (let i = 0; i < dataLength; i++) {
@@ -15,5 +15,3 @@ function makeData(dataLength = 10, range = 5) {
 
   return data
 }
-
-export const data = makeData(100, 500)

@@ -72,8 +72,8 @@ const ZoomableSyncAreaChart = ({
     .attr("transform", `translate(${margin.left}, ${margin.top})`)
 
   const chartPath = chart
-    .append("path")
     .datum(data)
+    .append("path")
     .attr("class", `${type === "focus" ? "focus-area" : "context-area"}`)
 
   if (type === "focus") {
