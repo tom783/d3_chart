@@ -1,5 +1,5 @@
 import * as React from "react"
-import ZoomableSyncAreaChart from "../../components/ZoomableSyncAreaChart"
+import ZoomableSyncAreaChart from "../../utils/ZoomableSyncAreaChart"
 import bindingEventsMultiLineChart from "../../utils/bindingEventsMultiLineChart"
 import updateMultiLineChart from "../../utils/updateMultiLineChart"
 

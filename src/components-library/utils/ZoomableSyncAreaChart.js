@@ -2,6 +2,7 @@ import {
   select,
   brushX,
   area,
+  line,
   scaleLinear,
   extent,
   scaleUtc,
@@ -12,7 +13,7 @@ import {
   bisector,
   pointer,
 } from "d3"
-import { gatherByKeys } from "../../utils/convertChartData"
+import { gatherByKeys } from "./convertChartData"
 
 const baseMargin = {
   left: 50,
@@ -45,11 +46,10 @@ const ZoomableSyncAreaChart = ({
   const xAxis = axisBottom(x).tickSizeOuter(0)
   const yAxis = axisLeft(y).tickSizeOuter(0)
 
-  const dataArea = area()
+  const dataArea = line()
     .curve(curveMonotoneX)
     .x((d) => x(d.timestamp))
-    .y0(chartHeight - margin.bottom)
-    .y1((d) => y(d.value))
+    .y((d) => y(d.value))
 
   const brush = brushX(x).extent([
     [0, 0],
