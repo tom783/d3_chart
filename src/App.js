@@ -14,13 +14,14 @@ import { ChartContainer } from "./components-library/container"
 
 const ViewPort = styled.div`
   background-color: #101112;
-  width: 1200px;
+  width: ${(props) => `${props.width}px`};
   margin: 0 auto;
   transform: translateY(calc(50vh - 200px));
 `
 
 function App() {
   const [data, setData] = React.useState(null)
+  const [width, setWidth] = React.useState(1200)
   React.useEffect(() => {
     setData(makeData(100, 500))
   }, [])
@@ -30,7 +31,7 @@ function App() {
   }
 
   return (
-    <ViewPort>
+    <ViewPort width={width}>
       <button onClick={change}>Set Data</button>
       {/* <ZoomableLineChart data={data} />
       <Brush data={data} /> */}
@@ -38,7 +39,7 @@ function App() {
       {data && (
         <ChartContainer
           data={data}
-          width={1200}
+          width={width}
           height={200}
           margin={{ top: 20, right: 39, left: 50, bottom: 30 }}
         />
