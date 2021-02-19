@@ -69,10 +69,12 @@ const variableMultiLineChart = ({
   ])
 
   const varliableColor = scaleOrdinal(
-    data.conditions === undefined
-      ? data.map((d) => d.condition)
-      : data.conditions,
-    data.colors === undefined ? ["red", "deepskyblue"] : data.colors
+    checkCondition.conditions === undefined
+      ? checkCondition.map((d) => d.condition)
+      : checkCondition.conditions,
+    checkCondition.colors === undefined
+      ? ["red", "deepskyblue"]
+      : checkCondition.colors
   ).unknown("black")
 
   if (type === "focus") {
@@ -83,6 +85,18 @@ const variableMultiLineChart = ({
       .append("rect")
       .style("width", width - margin.left - margin.right)
       .style("height", chartHeight - margin.bottom)
+  }
+
+  if (type === "focus") {
+    svgContainer
+      .append("g")
+      .attr("class", "range")
+      .attr("transform", `translate(${margin.left}, ${margin.top})`)
+      .datum(thresholdData)
+      .append("path")
+      .attr("class", "range-path")
+      .attr("fill", "rgba(223, 223, 223, 0.3)")
+      .attr("d", dataRange)
   }
 
   const chart = svgContainer
@@ -145,14 +159,6 @@ const variableMultiLineChart = ({
     .append("g")
     .attr("class", `${type === "focus" ? "focus-tooltip" : "context-tooltip"}`)
   chart.append("rect").attr("class", "pivot")
-
-  // if (type === "focus") {
-  //   chart
-  //     .datum(thresholdData)
-  //     .append("path")
-  //     .attr("fill", "")
-  //     .attr("d", dataRange)
-  // }
 
   return {
     chart,

@@ -52,16 +52,23 @@ const updateVariableChart = ({
     .x((d) => x(d.timestamp))
     .y((d) => y(d.value))
 
+  const dataRange = area()
+    .x((d) => x(d.timestamp))
+    .y0((d) => y(d.max))
+    .y1((d) => y(d.min))
+
   const brush = brushX(x).extent([
     [0, 0],
     [width - margin.right - margin.left, chartHeight - margin.bottom],
   ])
 
   const varliableColor = scaleOrdinal(
-    data.conditions === undefined
-      ? data.map((d) => d.condition)
-      : data.conditions,
-    data.colors === undefined ? ["red", "deepskyblue"] : data.colors
+    checkCondition.conditions === undefined
+      ? checkCondition.map((d) => d.condition)
+      : checkCondition.conditions,
+    checkCondition.colors === undefined
+      ? ["red", "deepskyblue"]
+      : checkCondition.colors
   ).unknown("black")
 
   if (type === "focus") {
@@ -69,6 +76,15 @@ const updateVariableChart = ({
       .select("defs clipPath rect")
       .style("width", width - margin.left - margin.right)
       .style("height", chartHeight - margin.bottom)
+  }
+
+  if (type === "focus") {
+    svgContainer
+      .select("g.range")
+      .attr("transform", `translate(${margin.left}, ${margin.top})`)
+      .datum(thresholdData)
+      .select("path.range-path")
+      .attr("d", dataRange)
   }
 
   const chart = svgContainer
@@ -85,7 +101,7 @@ const updateVariableChart = ({
       .attr("x1", 0)
       .attr("x2", width)
       .selectAll("stop")
-      .data(data)
+      .data(checkCondition)
       .join("stop")
       .attr("offset", (d) => x(d.timestamp) / width)
       .attr("stop-color", (d) => varliableColor(d.condition))
