@@ -1,9 +1,17 @@
 import * as React from "react"
-import zoomableSyncAreaChart from "../../utils/makeChart/zoomableSyncAreaChart"
+import variableMultiLineChart from "../../utils/makeChart/variableMultiLineChart"
 import bindingEventsMultiLineChart from "../../utils/bindingEventsMultiLineChart"
-import updateMultiLineChart from "../../utils/updateChart/updateMultiLineChart"
+import updateVariableChart from "../../utils/updateChart/updateVariableChart"
 
-const ChartContainer = ({ data, width, height, margin, lineColor, color }) => {
+const ChartContainer = ({
+  data,
+  thresholdData,
+  width,
+  height,
+  margin,
+  lineColor,
+  color,
+}) => {
   const contextRef = React.useRef()
   const focusRef = React.useRef()
   const [init, setInit] = React.useState(true)
@@ -17,9 +25,10 @@ const ChartContainer = ({ data, width, height, margin, lineColor, color }) => {
       yAxis: contextYAxis,
       brush: contextBrush,
       dataArea: contextDataArea,
-    } = await zoomableSyncAreaChart({
+    } = await variableMultiLineChart({
       container: contextRef.current,
       data,
+      thresholdData,
       width,
       height,
       margin,
@@ -33,13 +42,15 @@ const ChartContainer = ({ data, width, height, margin, lineColor, color }) => {
       yAxis: focusYAxis,
       brush: focusBrush,
       dataArea: focusDataArea,
-    } = await zoomableSyncAreaChart({
+    } = await variableMultiLineChart({
       container: focusRef.current,
       data,
+      thresholdData,
       type: "focus",
       width,
       height,
       margin,
+      variable: true,
     })
 
     await bindingEventsMultiLineChart({
@@ -73,7 +84,7 @@ const ChartContainer = ({ data, width, height, margin, lineColor, color }) => {
       yAxis: contextYAxis,
       brush: contextBrush,
       dataArea: contextDataArea,
-    } = await updateMultiLineChart({
+    } = await updateVariableChart({
       updateTarget: contextRef.current,
       type: "context",
       data,
@@ -90,7 +101,7 @@ const ChartContainer = ({ data, width, height, margin, lineColor, color }) => {
       yAxis: focusYAxis,
       brush: focusBrush,
       dataArea: focusDataArea,
-    } = await updateMultiLineChart({
+    } = await updateVariableChart({
       updateTarget: focusRef.current,
       type: "focus",
       data,
@@ -123,6 +134,7 @@ const ChartContainer = ({ data, width, height, margin, lineColor, color }) => {
     if (init) {
       makeChart()
     } else {
+      console.log("update")
       updateChart()
     }
   }, [data, width, height, margin, color, lineColor])

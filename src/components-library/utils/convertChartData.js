@@ -10,3 +10,14 @@ export function gatherByKeys(data = []) {
 
   return obj
 }
+
+export function conditionCheck({ threshold = [], data = [] }) {
+  //threshold = [{timestamp, min, max}, ...]
+  const setCondition = data.map((i) => {
+    threshold.forEach((t) => (i.condition = t.min < i.value && t.max > i.value))
+
+    return i
+  })
+
+  return setCondition
+}

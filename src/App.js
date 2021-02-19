@@ -7,10 +7,16 @@ import {
   ZoomableSyncAreaChartTooltip,
   ZoomableSyncAreaChart,
 } from "./components-library/components"
-import { makeData } from "./components-library/tempData/lineChartData"
+import {
+  makeData,
+  thresholdData,
+} from "./components-library/tempData/lineChartData"
 import { gatherByKeys } from "./components-library/utils/convertChartData"
 import bindingEventsMultiLineChart from "./components-library/utils/bindingEventsMultiLineChart"
-import { ChartContainer } from "./components-library/container"
+import {
+  MultiChartContainer,
+  VariableMultiChartContainer,
+} from "./components-library/container"
 
 const ViewPort = styled.div`
   background-color: #101112;
@@ -21,13 +27,16 @@ const ViewPort = styled.div`
 
 function App() {
   const [data, setData] = React.useState(null)
+  const [threshold, setThreshold] = React.useState(null)
   const [width, setWidth] = React.useState(1200)
   React.useEffect(() => {
     setData(makeData(100, 500))
+    setThreshold(thresholdData(100, 500))
   }, [])
 
   const change = (e) => {
     setData(makeData(100, 500))
+    setThreshold(thresholdData(100, 500))
   }
 
   return (
@@ -36,9 +45,18 @@ function App() {
       {/* <ZoomableLineChart data={data} />
       <Brush data={data} /> */}
       {/* <ZoomableSyncAreaChartTooltip data={data} /> */}
-      {data && (
-        <ChartContainer
+      {/* {data && (
+        <MultiChartContainer
           data={data}
+          width={width}
+          height={200}
+          margin={{ top: 20, right: 39, left: 50, bottom: 30 }}
+        />
+      )} */}
+      {data && (
+        <VariableMultiChartContainer
+          data={data}
+          thresholdData={threshold}
           width={width}
           height={200}
           margin={{ top: 20, right: 39, left: 50, bottom: 30 }}

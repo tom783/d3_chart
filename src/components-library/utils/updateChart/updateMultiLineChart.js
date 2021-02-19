@@ -10,7 +10,7 @@ import {
   curveMonotoneX,
 } from "d3"
 
-import { gatherByKeys } from "./convertChartData"
+import { gatherByKeys } from "../convertChartData"
 
 const updateMultiLineChart = ({
   updateTarget,
