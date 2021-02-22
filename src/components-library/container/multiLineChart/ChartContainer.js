@@ -1,7 +1,15 @@
 import * as React from "react"
+import styled from "@emotion/styled"
 import zoomableSyncAreaChart from "../../utils/makeChart/zoomableSyncAreaChart"
 import bindingEventsMultiLineChart from "../../utils/bindingEventsMultiLineChart"
 import updateMultiLineChart from "../../utils/updateChart/updateMultiLineChart"
+
+const ViewPort = styled.div`
+  background-color: #101112;
+  width: ${(props) => `${props.width}px`};
+  margin: 0 auto;
+  transform: translateY(calc(50vh - 200px));
+`
 
 const ChartContainer = ({ data, width, height, margin, lineColor, color }) => {
   const contextRef = React.useRef()
@@ -128,10 +136,10 @@ const ChartContainer = ({ data, width, height, margin, lineColor, color }) => {
   }, [data, width, height, margin, color, lineColor])
 
   return (
-    <>
+    <ViewPort width={width}>
       <svg width={width} height={height} ref={contextRef}></svg>
       <svg width={width} height={height} ref={focusRef}></svg>
-    </>
+    </ViewPort>
   )
 }
 
